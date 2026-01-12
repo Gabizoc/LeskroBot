@@ -4,6 +4,7 @@ const cheerio = require('cheerio');
 const cron = require('node-cron');
 const fs = require('fs');
 const mongoose = require('mongoose');
+const { load } = require('cheerio');
 
 // Load configuration from config.json
 const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
@@ -91,7 +92,7 @@ const scrapeQuestions = async (url, category) => {
     try {
         const { data } = await axios.get(url);
         const $ = cheerio.load(data);
-        return $('section#content p a').map((_, el) => ({
+        return $('main#main-content p a').map((_, el) => ({
             question: $(el).text(),
             category
         })).get();
@@ -104,7 +105,8 @@ const scrapeQuestions = async (url, category) => {
 // Function to load questions from all URLs
 const loadQuestions = async () => {
     const questions = await Promise.all(categories.map(({ url, category }) => scrapeQuestions(url, category)));
-    return questions.flat();
+    const flatQuestions = questions.flat();
+    return flatQuestions;
 };
 
 // Emoji mapping
@@ -243,6 +245,9 @@ bot.once('ready', async () => {
             timezone: 'Europe/Paris'
         });
 
+        const resonse = loadQuestions().catch(handleError);
+        console.log(`Questions chargées : ${resonse.length}`);
+
         bot.user.setPresence({
             activities: [{ name: status, type: ActivityType.Watching }],
             status: 'online',
@@ -268,16 +273,16 @@ bot.on('messageCreate', async (message) => {
             const newCronTime = `0 ${newTime} * * *`;
 
             const errorTime = new EmbedBuilder()
-                    .setTitle("<:Erreur:1270711305992409098> Erreur :")
-                    .setDescription("<:chrono:1270692023078486109> Veuillez fournir une __heure valide__ pour la planification *(0-23)*." +
-                        "\n\n**Usage :** `SetTime {heure}`" +
-                        "\n*ex : `SetTime 8`*")
-                        .setFooter({ text: 'By Gabizoc', iconURL: "https://i.postimg.cc/1tFh2LpZ/Sans-titre.png" })
-                    .setThumbnail("https://i.postimg.cc/Ls8zPt2y/Design-sans-titre-6.png")
-                    .setAuthor({ name: "Leskro Bot", iconURL: "https://media.discordapp.net/attachments/1270358797566873600/1270463169336311941/0e396f4f93ecf9ca54fcb048fee23361.png?ex=66b3ca87&is=66b27907&hm=8c0c63d568edb748d14613442b8a6d6014bacc1e55763d4f3f43d4e74f56833d&=&format=webp&quality=lossless&width=437&height=437" })
-                    .setColor('#009278')
-                    .setTimestamp();
-            
+                .setTitle("<:Erreur:1270711305992409098> Erreur :")
+                .setDescription("<:chrono:1270692023078486109> Veuillez fournir une __heure valide__ pour la planification *(0-23)*." +
+                    "\n\n**Usage :** `SetTime {heure}`" +
+                    "\n*ex : `SetTime 8`*")
+                .setFooter({ text: 'By Gabizoc', iconURL: "https://i.postimg.cc/1tFh2LpZ/Sans-titre.png" })
+                .setThumbnail("https://i.postimg.cc/Ls8zPt2y/Design-sans-titre-6.png")
+                .setAuthor({ name: "Leskro Bot", iconURL: "https://media.discordapp.net/attachments/1270358797566873600/1270463169336311941/0e396f4f93ecf9ca54fcb048fee23361.png?ex=66b3ca87&is=66b27907&hm=8c0c63d568edb748d14613442b8a6d6014bacc1e55763d4f3f43d4e74f56833d&=&format=webp&quality=lossless&width=437&height=437" })
+                .setColor('#009278')
+                .setTimestamp();
+
             if (!newTime || isNaN(newTime) || newTime < 0 || newTime > 23) {
                 await message.author.send({ embeds: [errorTime] }).catch(handleError);
                 await message.delete().catch(handleError);
@@ -305,23 +310,23 @@ bot.on('messageCreate', async (message) => {
         } else if (content.startsWith('help')) {
 
             const embedHelp = new EmbedBuilder()
-                    .setTitle("<:list:1270739235867197511> Menu d'aide :")
-                    .setDescription(`<:Fleche:1270419451283509248> Voici toutes les commandes disponibles de <@1270100934982242437> :\n<:transparent:1270744779776593945>`)
-                    .addFields(
-                        { name: 'Start', value: 'Envoi une question "tu préfères ?"', inline: true },
-                        { name: 'Help', value: 'Envoie le menu d\'aide"', inline: true },
-                        { name: 'SetTime', value: 'Permet de définir l\'heure ||Ne marche pas', inline: true },
-                        { name: '<:info:1270742625569214547> Note :', value: '***Toutes** les commandes doivent commencer par <@1270100934982242437>*', inline: false }
-                    )
-                    .setFooter({ text: 'By Gabizoc', iconURL: "https://i.postimg.cc/1tFh2LpZ/Sans-titre.png" })
-                    .setThumbnail("https://i.postimg.cc/hvxD8XCT/0e396f4f93ecf9ca54fcb048fee23361-1.png")
-                    .setAuthor({ name: "Leskro Bot", iconURL: "https://media.discordapp.net/attachments/1270358797566873600/1270463169336311941/0e396f4f93ecf9ca54fcb048fee23361.png?ex=66b3ca87&is=66b27907&hm=8c0c63d568edb748d14613442b8a6d6014bacc1e55763d4f3f43d4e74f56833d&=&format=webp&quality=lossless&width=437&height=437" })
-                    .setColor('#009278')
-                    .setTimestamp();
+                .setTitle("<:list:1270739235867197511> Menu d'aide :")
+                .setDescription(`<:Fleche:1270419451283509248> Voici toutes les commandes disponibles de <@1270100934982242437> :\n<:transparent:1270744779776593945>`)
+                .addFields(
+                    { name: 'Start', value: 'Envoi une question "tu préfères ?"', inline: true },
+                    { name: 'Help', value: 'Envoie le menu d\'aide"', inline: true },
+                    { name: 'SetTime', value: 'Permet de définir l\'heure ||Ne marche pas', inline: true },
+                    { name: '<:info:1270742625569214547> Note :', value: '***Toutes** les commandes doivent commencer par <@1270100934982242437>*', inline: false }
+                )
+                .setFooter({ text: 'By Gabizoc', iconURL: "https://i.postimg.cc/1tFh2LpZ/Sans-titre.png" })
+                .setThumbnail("https://i.postimg.cc/hvxD8XCT/0e396f4f93ecf9ca54fcb048fee23361-1.png")
+                .setAuthor({ name: "Leskro Bot", iconURL: "https://media.discordapp.net/attachments/1270358797566873600/1270463169336311941/0e396f4f93ecf9ca54fcb048fee23361.png?ex=66b3ca87&is=66b27907&hm=8c0c63d568edb748d14613442b8a6d6014bacc1e55763d4f3f43d4e74f56833d&=&format=webp&quality=lossless&width=437&height=437" })
+                .setColor('#009278')
+                .setTimestamp();
 
             await message.author.send({ embeds: [embedHelp] }).catch(handleError);
             await message.delete().catch(handleError);
-        
+
         }
     } catch (error) {
         handleError(error);
